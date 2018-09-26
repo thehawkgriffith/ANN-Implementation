@@ -1,52 +1,68 @@
 import numpy as np
+x = [[10, 20], [14, 18]]
+X = np.array(x)
+y = [[1.7], [1.4]]
+y = np.array(y)
 
-
-def nonlin(x, deriv=False):
+def sigmoid(x, deriv = False):
     if deriv == True:
-        return (x*(1-x))
-    return 1/(1+np.exp(-x))
+        return sigmoid(x)*(1 - sigmoid(x))
+    return 1/(1 + 2.718281**(-x))
 
-class NeuralNetwork():
+class NeuralNetwork:
     
-    def __init__(self, x, num_classes, inp):
-        self.x = x
-        self.arc = [10, 10, 10]
-        self.weights = {'w0':np.random.randn(x.shape[1], 10),
-                        'w1':np.random.randn(10,10),
-                        'w2':np.random.randn(10,10),
-                        'w3':np.random.randn(10,10),
-                        'wout':np.random.randn(10, num_classes)}
-        self.layer1 = np.matmul(self.x, self.weights['w0'])
-        self.layer2 = np.matmul(self.layer1, self.weights['w1'])
-        self.layer3 = np.matmul(self.layer2, self.weights['w2'])
-        self.layer4 = np.matmul(self.layer3, self.weights['w3'])
-        self.layerout = np.matmul(self.layer4, self.weights['wout'])
+    def __init__(self, X, hidden1, hidden2, hidden3, num_class):
+        self.X = X
+        self.hidden1 = hidden1
+        self.hidden2 = hidden2
+        self.hidden3 = hidden3
+        self.classnum = num_class
         
-    def getOut(self):
-            return self.layerout
+        self.weights = {'w1':np.random.randn(self.X.shape[1], self.hidden1),
+                        'w2':np.random.randn(self.hidden1, self.hidden2),
+                        'w3':np.random.randn(self.hidden2, self.hidden3),
+                        'wout':np.random.randn(self.hidden3, self.classnum)}
         
-    def backProp(self, y, steps):
+        self.biases = {'b1':np.random.randn(1, self.hidden1),
+                       'b2':np.random.randn(1, self.hidden2),
+                       'b3':np.random.randn(1, self.hidden3),
+                       'bout':np.random.randn(1, self.classnum)}
         
-        for j in range(steps):
-            out_error = np.square(self.layerout - y)
-            if (j%10000) == 0:
-                print("Error: {}".format(str(np.mean(np.abs(out_error)))))
-            layerout_delta = out_error*nonlin(self.layerout, deriv=True)
-            layer4_error = np.matmul(layerout_delta, self.weights['wout'].T)
-            layer4_delta = layer4_error*nonlin(self.layer4, deriv=True)
-            layer3_error = np.matmul(layer4_delta, self.weights['w3'].T)
-            layer3_delta = layer3_error*nonlin(self.layer3, deriv=True)
-            layer2_error = np.matmul(layer3_delta, self.weights['w2'].T)
-            layer2_delta = layer2_error*nonlin(self.layer2, deriv=True)
-            layer1_error = np.matmul(layer2_delta, self.weights['w1'].T)
-            layer1_delta = layer1_error*nonlin(self.layer1, deriv=True)
-            self.weights['wout'] += np.matmul(self.layer4.T, layerout_delta)
-            self.weights['w3'] += np.matmul(self.layer3.T, layer4_delta)
-            self.weights['w2'] += np.matmul(self.layer2.T, layer3_delta)
-            self.weights['w1'] += np.matmul(self.layer1.T, layer2_delta)
-            self.weights['w0'] += np.matmul(self.x.T, layer1_delta)
+        self.layer1 = sigmoid(np.add(np.dot(self.X, self.weights['w1']), self.biases['b1']))
+        self.layer2 = sigmoid(np.add(np.dot(self.layer1, self.weights['w2']), self.biases['b2']))
+        self.layer3 = sigmoid(np.add(np.dot(self.layer2, self.weights['w3']), self.biases['b3']))    
+        self.layerout = sigmoid(np.add(np.dot(self.layer3, self.weights['wout']), self.biases['bout']))
+        
+                                
+    def predict(self):
+        return self.layerout
+                                
+    def train(self, y, learning_rate):
+        
+        for epoch in range(100000):
+            
+            errorout = self.layerout - y
+            delout = errorout * sigmoid(self.layerout, True)
+            error3 = np.dot(delout, self.weights['wout'].T)
+            del3 = error3 * sigmoid(self.layer3, True)
+            error2 = np.dot(del3, self.weights['w3'].T)
+            del2 = error2 * sigmoid(self.layer2, True)
+            error1 = np.dot(del2, self.weights['w2'].T)
+            del1 = error1 * sigmoid(self.layer1, True)
+            
+            self.weights['wout'] += np.dot(self.layer3.T, delout) * learning_rate
+            self.weights['w3'] += np.dot(self.layer2.T, del3) * learning_rate
+            self.weights['w2'] += np.dot(self.layer1.T, del2) * learning_rate
+            self.weights['w1'] += np.dot(self.X.T, del1) * learning_rate
+            
+            self.biases['bout'] += np.sum(delout, axis=0) * learning_rate
+            self.biases['b3'] += np.sum(del3, axis=0) * learning_rate
+            self.biases['b2'] += np.sum(del2, axis=0) * learning_rate
+            self.biases['b1'] += np.sum(del1, axis=0) * learning_rate
+            
+            if epoch%10000 == 0:
+                print('Error: {}'.format(np.mean(np.abs(errorout))))
 
-
-X = np.array([[10,10,10], [12,132,132], [13,32,13], [14,1,13]])
-model = NeuralNetwork(X, 1, 4)
-model.backProp([[1], [2], [3], [4]], 60000)
+                
+model = NeuralNetwork(X, 3, 3, 3, 1)
+model.train(y, 0.001)
