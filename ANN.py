@@ -28,20 +28,24 @@ class NeuralNetwork:
                        'b3':np.random.randn(1, self.hidden3),
                        'bout':np.random.randn(1, self.classnum)}
         
-        self.layer1 = sigmoid(np.add(np.dot(self.X, self.weights['w1']), self.biases['b1']))
-        self.layer2 = sigmoid(np.add(np.dot(self.layer1, self.weights['w2']), self.biases['b2']))
-        self.layer3 = sigmoid(np.add(np.dot(self.layer2, self.weights['w3']), self.biases['b3']))    
-        self.layerout = sigmoid(np.add(np.dot(self.layer3, self.weights['wout']), self.biases['bout']))
-        
                                 
     def predict(self):
         return self.layerout
                                 
     def train(self, y, learning_rate):
         
+        i = 0
         for epoch in range(100000):
             
-            errorout = self.layerout - y
+            if i >= self.X.shape[0] - 5:
+                i = 0
+            
+            self.layer1 = sigmoid(np.add(np.dot(self.X[i:i+5], self.weights['w1']), self.biases['b1']))
+            self.layer2 = sigmoid(np.add(np.dot(self.layer1, self.weights['w2']), self.biases['b2']))
+            self.layer3 = sigmoid(np.add(np.dot(self.layer2, self.weights['w3']), self.biases['b3']))    
+            self.layerout = sigmoid(np.add(np.dot(self.layer3, self.weights['wout']), self.biases['bout']))
+            
+            errorout = self.layerout - y[i:i+5]
             delout = errorout * sigmoid(self.layerout, True)
             error3 = np.dot(delout, self.weights['wout'].T)
             del3 = error3 * sigmoid(self.layer3, True)
@@ -53,7 +57,7 @@ class NeuralNetwork:
             self.weights['wout'] += np.dot(self.layer3.T, delout) * learning_rate
             self.weights['w3'] += np.dot(self.layer2.T, del3) * learning_rate
             self.weights['w2'] += np.dot(self.layer1.T, del2) * learning_rate
-            self.weights['w1'] += np.dot(self.X.T, del1) * learning_rate
+            self.weights['w1'] += np.dot(self.X[i:i+5].T, del1) * learning_rate
             
             self.biases['bout'] += np.sum(delout, axis=0) * learning_rate
             self.biases['b3'] += np.sum(del3, axis=0) * learning_rate
